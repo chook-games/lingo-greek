@@ -181,8 +181,8 @@
         }
 
         #game-board {
-            display: grid;
-            grid-template-rows: repeat(6, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: 5px;
             padding: 8px;
             border-radius: 14px;
@@ -467,7 +467,6 @@
 
         function createBoard() {
             const board = document.getElementById('game-board');
-            board.style.gridTemplateColumns = `repeat(${wordLength}, 1fr)`;
             for (let i = 0; i < maxGuesses; i++) {
                 const row = document.createElement('div');
                 row.className = 'row';
