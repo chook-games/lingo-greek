@@ -238,9 +238,10 @@
         }
 
         button.key {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
+            background: linear-gradient(180deg, rgba(10, 44, 255, 0.55), rgba(7, 30, 180, 0.55));
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
             height: 44px;
             min-width: 28px;
             font-size: 14px;
@@ -255,6 +256,7 @@
             transition: transform 0.06s, background-color 0.15s;
             -webkit-tap-highlight-color: transparent;
         }
+        button.key:hover { background: linear-gradient(180deg, rgba(10, 44, 255, 0.7), rgba(7, 30, 180, 0.7)); }
         button.key:active { transform: scale(0.95); }
         button.key.wide { flex: 1.6; font-size: 12px; }
 
