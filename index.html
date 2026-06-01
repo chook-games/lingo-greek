@@ -125,13 +125,12 @@
             width: 100%;
             height: 100%;
             max-width: 420px;
-            padding: 6px 8px;
+            padding: 4px 8px;
             position: relative;
             z-index: 1;
         }
         #game-screen.active { display: flex; }
 
-        /* Header row: back + title + stats */
         .game-header {
             display: flex;
             align-items: center;
@@ -176,38 +175,34 @@
             font-size: 13px;
             color: var(--muted);
             text-align: center;
-            margin: 2px 0 4px 0;
+            margin: 1px 0 2px 0;
             flex-shrink: 0;
         }
 
+        /* Board fills available space between message and keyboard */
         #game-board {
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
             gap: 5px;
-            padding: 8px;
-            border-radius: 14px;
-            background: var(--panel);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            box-shadow: var(--shadow);
-            backdrop-filter: blur(10px);
-            flex-shrink: 0;
+            flex: 1;
+            width: 100%;
+            min-height: 0;
         }
 
         .row {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            display: flex;
+            justify-content: center;
             gap: 5px;
         }
 
         .cell {
-            aspect-ratio: 1;
             border: 2px solid var(--tile-border);
             background: var(--tile-bg);
-            border-radius: 10px;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 26px;
             font-weight: 900;
             text-transform: uppercase;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 14px rgba(0, 0, 0, 0.18);
@@ -229,7 +224,6 @@
             gap: 6px;
             width: 100%;
             padding: 8px;
-            border-radius: 14px;
             background: var(--panel-strong);
             border: 1px solid rgba(255, 255, 255, 0.25);
             box-shadow: var(--shadow);
@@ -247,7 +241,6 @@
             background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.22);
-            border-radius: 10px;
             height: 44px;
             min-width: 28px;
             font-size: 14px;
@@ -280,18 +273,15 @@
             border-color: rgba(255, 255, 255, 0.12);
         }
 
-        /* ===== RESPONSIVE: dynamically scale down on small screens ===== */
+        /* Responsive keyboard */
         @media (max-height: 700px) {
             .game-title { font-size: 22px; }
             .game-stats { font-size: 10px; padding: 3px 8px; }
-            .game-subtitle { font-size: 11px; margin: 1px 0 2px 0; }
-            #game-board { gap: 4px; padding: 6px; }
-            .row { gap: 4px; }
-            .cell { font-size: 20px; border-radius: 8px; border-width: 2px; }
+            .game-subtitle { font-size: 11px; }
             #message { font-size: 13px; min-height: 18px; }
             #keyboard { gap: 4px; padding: 6px; }
             .key-row { gap: 4px; }
-            button.key { height: 36px; font-size: 12px; border-radius: 8px; }
+            button.key { height: 36px; font-size: 12px; }
             button.key.wide { font-size: 10px; }
         }
 
@@ -299,13 +289,10 @@
             .game-title { font-size: 18px; letter-spacing: 2px; }
             .game-stats { font-size: 9px; padding: 2px 6px; }
             .game-subtitle { font-size: 10px; }
-            #game-board { gap: 3px; padding: 4px; }
-            .row { gap: 3px; }
-            .cell { font-size: 16px; border-radius: 6px; border-width: 1.5px; }
             #message { font-size: 11px; min-height: 14px; }
             #keyboard { gap: 3px; padding: 4px; }
             .key-row { gap: 3px; }
-            button.key { height: 30px; font-size: 10px; border-radius: 6px; min-width: 22px; }
+            button.key { height: 30px; font-size: 10px; min-width: 22px; }
             button.key.wide { font-size: 9px; }
         }
 
@@ -313,7 +300,6 @@
             .menu-title { font-size: 36px; }
             .menu-btn { font-size: 15px; height: 46px; }
             .game-title { font-size: 22px; }
-            .cell { font-size: 20px; }
             button.key { height: 38px; font-size: 12px; }
         }
     </style>
@@ -368,7 +354,6 @@
         function backToMenu() {
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('main-menu').classList.add('active');
-            // Clean up event listeners
             document.removeEventListener('keydown', handlePhysicalKeyboard);
         }
 
@@ -423,9 +408,47 @@
         let currentGuess = "";
         let gameOver = false;
 
+        function computeCellSize() {
+            const screen = document.getElementById('game-screen');
+            const header = screen.querySelector('.game-header');
+            const subtitle = screen.querySelector('.game-subtitle');
+            const msg = document.getElementById('message');
+            const kb = document.getElementById('keyboard');
+
+            const availHeight = screen.clientHeight;
+            const headerH = header.offsetHeight;
+            const subH = subtitle.offsetHeight;
+            const msgH = msg.offsetHeight;
+            const kbH = kb.offsetHeight;
+
+            // Gaps: header->subtitle, subtitle->msg, msg->board, board->keyboard
+            const gaps = 4 + 2 + 4 + 6; // approximate total gaps in px
+            const boardGap = 5; // gap between rows
+            const cellGap = 5; // gap between cells in a row
+
+            const boardAvail = availHeight - headerH - subH - msgH - kbH - gaps;
+            // board has maxGuesses rows with boardGap between them
+            const rowH = (boardAvail - (maxGuesses - 1) * boardGap) / maxGuesses;
+            // cell width = rowH (square), but also constrained by screen width
+            const maxWidth = screen.clientWidth - 16; // 8px padding each side
+            const cellW = (maxWidth - (wordLength - 1) * cellGap) / wordLength;
+
+            const size = Math.min(rowH, cellW);
+            return Math.max(size, 20); // minimum 20px
+        }
+
+        function applyCellSizes() {
+            const size = computeCellSize();
+            const fontSize = Math.max(size * 0.5, 12);
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.style.width = size + 'px';
+                cell.style.height = size + 'px';
+                cell.style.fontSize = fontSize + 'px';
+            });
+        }
+
         async function startGame(len) {
             wordLength = len;
-            // Reset state
             targetWord = "";
             currentRow = 0;
             currentGuess = "";
@@ -434,15 +457,12 @@
             loadStats();
             updateStatsUI();
 
-            // Clear previous board & keyboard
             document.getElementById('game-board').innerHTML = '';
             document.getElementById('keyboard').innerHTML = '';
             document.getElementById('message').textContent = '';
 
-            // Update subtitle
             document.getElementById('game-subtitle').textContent = `Βρες την λέξη με τα ${len} γράμματα!`;
 
-            // Show game screen
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
 
@@ -459,18 +479,33 @@
             createBoard();
             createKeyboard();
 
+            // Size cells after layout
+            requestAnimationFrame(() => {
+                applyCellSizes();
+            });
+
             currentGuess = targetWord.charAt(0);
             updateBoard();
 
             document.addEventListener('keydown', handlePhysicalKeyboard);
         }
 
+        // Re-size on window resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (document.getElementById('game-screen').classList.contains('active')) {
+                    applyCellSizes();
+                }
+            }, 100);
+        });
+
         function createBoard() {
             const board = document.getElementById('game-board');
             for (let i = 0; i < maxGuesses; i++) {
                 const row = document.createElement('div');
                 row.className = 'row';
-                row.style.gridTemplateColumns = `repeat(${wordLength}, 1fr)`;
                 row.id = `row-${i}`;
                 for (let j = 0; j < wordLength; j++) {
                     const cell = document.createElement('div');
