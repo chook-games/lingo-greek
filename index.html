@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greek Lingo Prototype</title>
+    <style>
+        :root {
+            /* TV-show palette: electric blues + neon orange accents */
+            --bg-top: #0a2cff;
+            --bg-mid: #0b6dff;
+            --bg-bot: #07b7ff;
+            --panel: rgba(255, 255, 255, 0.12);
+            --panel-strong: rgba(255, 255, 255, 0.18);
+            --text-color: #ffffff;
+            --muted: rgba(255, 255, 255, 0.8);
+
+            --tile-bg: rgba(255, 255, 255, 0.12);
+            --tile-border: rgba(255, 255, 255, 0.55);
+            --tile-filled-border: rgba(255, 255, 255, 0.9);
+
+            /* Feedback colors (brighter, show-like) */
+            --correct: #26d07c;   /* neon green */
+            --present: #ffd400;   /* bright yellow */
+            --absent: rgba(0, 0, 0, 0.28);
+
+            /* Accent */
+            --accent: #ff7a00;    /* neon orange */
+            --accent-2: #ffb000;
+
+            --keyboard-bg: rgba(255, 255, 255, 0.22);
+            --keyboard-bg-hover: rgba(255, 255, 255, 0.32);
+            --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+        }
+
+        body {
+            background: radial-gradient(1200px 700px at 20% 10%, rgba(255, 122, 0, 0.25), transparent 55%),
+                        radial-gradient(900px 600px at 80% 20%, rgba(255, 176, 0, 0.18), transparent 60%),
+                        linear-gradient(180deg, var(--bg-top), var(--bg-mid) 45%, var(--bg-bot));
+            color: var(--text-color);
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 18px;
+            min-height: 100vh;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        /* A glossy stage-like container */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.18), transparent 45%),
+                radial-gradient(circle at 15% 60%, rgba(255, 255, 255, 0.10), transparent 45%),
+                radial-gradient(circle at 85% 65%, rgba(255, 255, 255, 0.10), transparent 45%);
+            pointer-events: none;
+            mix-blend-mode: overlay;
+        }
+
+        h1 {
+            margin-top: 4px;
+            margin-bottom: 6px;
+            letter-spacing: 2px;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-shadow:
+                0 0 14px rgba(255, 255, 255, 0.35),
+                0 0 34px rgba(255, 122, 0, 0.35);
+        }
+
+        /* Orange underline like a TV lower-third accent */
+        h1::after {
+            content: "";
+            display: block;
+            height: 4px;
+            width: min(360px, 86vw);
+            margin: 10px auto 0;
+            border-radius: 999px;
+            background: linear-gradient(90deg, transparent, var(--accent), var(--accent-2), var(--accent), transparent);
+            box-shadow: 0 0 18px rgba(255, 122, 0, 0.55);
+        }
+
+        p.subtitle {
+            margin: 10px 0 16px 0;
+            font-size: 14px;
+            color: var(--muted);
+            text-align: center;
+            max-width: 520px;
+            line-height: 1.35;
+            background: var(--panel);
+            padding: 10px 12px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-rows: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 18px;
+            padding: 14px;
+            border-radius: 16px;
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(4, 62px);
+            gap: 8px;
+        }
+
+        .cell {
+            width: 62px;
+            height: 62px;
+            border: 2px solid var(--tile-border);
+            background: var(--tile-bg);
+            border-radius: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: 900;
+            text-transform: uppercase;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.22),
+                0 10px 22px rgba(0, 0, 0, 0.18);
+        }
+
+        #message {
+            min-height: 28px;
+            margin: 10px 0 14px 0;
+            font-weight: 800;
+            font-size: 18px;
+            color: #ffffff;
+            text-shadow: 0 0 14px rgba(0, 0, 0, 0.35);
+        }
+
+        #keyboard {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 560px;
+            padding: 14px;
+            border-radius: 16px;
+            background: var(--panel-strong);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .key-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button.key {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 14px;
+            height: 56px;
+            min-width: 40px;
+            font-size: 16px;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.25),
+                0 12px 24px rgba(0, 0, 0, 0.18);
+            transition: transform 0.06s, background-color 0.15s, box-shadow 0.15s;
+        }
+
+        button.key:hover {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.20));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                0 16px 34px rgba(0, 0, 0, 0.22);
+        }
+
+        button.key:active {
+            transform: scale(0.97);
+        }
+
+        button.key.wide {
+            flex: 1.6;
+            font-size: 14px;
+        }
+
+        /* Color States */
+        .correct {
+            background: linear-gradient(180deg, rgba(38, 208, 124, 0.95), rgba(14, 149, 84, 0.95));
+            border-color: rgba(255, 255, 255, 0.22);
+        }
+
+        .present {
+            background: linear-gradient(180deg, rgba(255, 212, 0, 0.98), rgba(221, 168, 0, 0.98));
+            border-color: rgba(255, 255, 255, 0.22);
+            color: #1a1a1a;
+        }
+
+        .absent {
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.18));
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Responsive tweaks */
+        @media (max-width: 420px) {
+            .row { grid-template-columns: repeat(4, 54px); }
+            .cell { width: 54px; height: 54px; font-size: 28px; border-radius: 12px; }
+            button.key { height: 52px; border-radius: 12px; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>LINGO: ΕΛΛΗΝΙΚΑ</h1>
+    <p class="subtitle">Βρες την 4-γράμματη λέξη! Χάνεις αμέσως αν γράψεις ανύπαρκτη λέξη.</p>
+    <div id="mode-selector" style="display:flex; gap:10px; margin-bottom:10px;">
+        <span style="background:var(--accent); padding:6px 16px; border-radius:999px; font-weight:900; font-size:14px; box-shadow:0 0 14px rgba(255,122,0,0.5);">4 ΓΡΑΜΜΑΤΑ</span>
+        <span style="background:var(--panel-strong); padding:6px 16px; border-radius:999px; font-weight:700; font-size:14px; border:1px solid rgba(255,255,255,0.2); opacity:0.6;">5 ΓΡΑΜΜΑΤΑ — COMING SOON</span>
+        <span style="background:var(--panel-strong); padding:6px 16px; border-radius:999px; font-weight:700; font-size:14px; border:1px solid rgba(255,255,255,0.2); opacity:0.6;">6 ΓΡΑΜΜΑΤΑ — COMING SOON</span>
+    </div>
+
+    <div id="message"></div>
+    <div id="game-board"></div>
+    <div id="keyboard"></div>
+
+    <script>
+        // ---- External word data (loaded from dictionary.json) ----
+        let targetWords = [];
+        let dictionary = [];
+        const wordLength = 4;
+        const maxGuesses = 6;
+
+        // ---- Persistent stats (wins/losses) ----
+        // Note: This uses localStorage. It will persist in normal browsers/hosting.
+        // If your preview environment blocks storage, it will silently fall back to in-memory stats.
+        const STATS_KEY = 'greekLingoStats_v1';
+        let stats = { wins: 0, losses: 0 };
+
+        function loadStats() {
+            try {
+                const raw = localStorage.getItem(STATS_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (typeof parsed?.wins === 'number' && typeof parsed?.losses === 'number') {
+                    stats = { wins: parsed.wins, losses: parsed.losses };
+                }
+            } catch (_) {
+                // ignore (storage might be unavailable)
+            }
+        }
+
+        function saveStats() {
+            try {
+                localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+            } catch (_) {
+                // ignore
+            }
+        }
+
+        function renderStats() {
+            let el = document.getElementById('stats');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'stats';
+                el.style.margin = '0 0 10px 0';
+                el.style.fontWeight = '800';
+                el.style.color = 'rgba(255,255,255,0.92)';
+                el.style.textShadow = '0 0 12px rgba(0,0,0,0.25)';
+                el.style.background = 'rgba(255,255,255,0.14)';
+                el.style.border = '1px solid rgba(255,255,255,0.22)';
+                el.style.borderRadius = '12px';
+                el.style.padding = '8px 12px';
+                el.style.boxShadow = '0 14px 40px rgba(0,0,0,0.18)';
+                const msg = document.getElementById('message');
+                msg.parentNode.insertBefore(el, msg);
+            }
+            el.textContent = `Wins: ${stats.wins}  |  Losses: ${stats.losses}`;
+        }
+
+        async function loadWordData() {
+            const res = await fetch('./dictionary.json', { cache: 'no-store' });
+            if (!res.ok) throw new Error('Failed to load dictionary.json');
+            const data = await res.json();
+
+            if (data.wordLength !== wordLength) {
+                throw new Error(`dictionary.json wordLength (${data.wordLength}) does not match game (${wordLength})`);
+            }
+
+            targetWords = Array.isArray(data.targetWords) ? data.targetWords : [];
+            dictionary = Array.isArray(data.dictionary) ? data.dictionary : [];
+
+            // Normalize (trim/uppercase) to reduce surprises
+            targetWords = targetWords.map(w => String(w).trim().toUpperCase());
+            dictionary = dictionary.map(w => String(w).trim().toUpperCase());
+
+            if (targetWords.length < 1 || dictionary.length < 1) {
+                throw new Error('dictionary.json is missing targetWords/dictionary entries');
+            }
+        }
+
+        // Game State
+        let targetWord = "";
+        let currentRow = 0;
+        let currentGuess = "";
+        let gameOver = false;
+
+        // Initialize Game
+        async function initGame() {
+            loadStats();
+            renderStats();
+
+            try {
+                await loadWordData();
+            } catch (e) {
+                showMessage(`Dictionary load error: ${e.message}`, true);
+                gameOver = true;
+                return;
+            }
+
+            // Pick random target word
+            targetWord = targetWords[Math.floor(Math.random() * targetWords.length)];
+
+            createBoard();
+            createKeyboard();
+
+            // Set the first letter for the first attempt
+            currentGuess = targetWord.charAt(0);
+            updateBoard();
+
+            // Listen for physical keyboard input
+            document.addEventListener('keydown', handlePhysicalKeyboard);
+        }
+
+        function createBoard() {
+            const board = document.getElementById('game-board');
+            for (let i = 0; i < maxGuesses; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.id = `row-${i}`;
+                
+                for (let j = 0; j < wordLength; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.id = `cell-${i}-${j}`;
+                    row.appendChild(cell);
+                }
+                board.appendChild(row);
+            }
+        }
+
+        function createKeyboard() {
+            const keyboardLayout = [
+                ['Ε', 'Ρ', 'Τ', 'Υ', 'Θ', 'Ι', 'Ο', 'Π'],
+                ['Α', 'Σ', 'Δ', 'Φ', 'Γ', 'Η', 'Ξ', 'Κ', 'Λ'],
+                ['DEL', 'Ζ', 'Χ', 'Ψ', 'Ω', 'Β', 'Ν', 'Μ']
+            ];
+
+            const keyboard = document.getElementById('keyboard');
+            
+            keyboardLayout.forEach(rowKeys => {
+                const row = document.createElement('div');
+                row.className = 'key-row';
+                
+                rowKeys.forEach(key => {
+                    const btn = document.createElement('button');
+                    btn.textContent = key;
+                    btn.className = 'key';
+                    if (key === 'DEL') btn.classList.add('wide');
+                    btn.id = `key-${key}`;
+                    
+                    btn.onclick = () => handleInput(key);
+                    row.appendChild(btn);
+                });
+                
+                keyboard.appendChild(row);
+            });
+        }
+
+        function handlePhysicalKeyboard(e) {
+            if (gameOver) return;
+
+            const key = e.key.toUpperCase();
+            
+            if (key === 'BACKSPACE' || key === 'DELETE') {
+                handleInput('DEL');
+                return;
+            }
+
+            // Greek Character mapping check (simple regex for basic Greek alphabet)
+            if (/^[Α-Ω]$/.test(key)) {
+                handleInput(key);
+            }
+            
+            // Map common English keystrokes to Greek for ease of testing on US keyboards
+            const enToGr = {
+                'A':'Α','B':'Β','G':'Γ','D':'Δ','E':'Ε','Z':'Ζ','H':'Η','U':'Θ','I':'Ι','K':'Κ',
+                'L':'Λ','M':'Μ','N':'Ν','X':'Ξ','O':'Ο','P':'Π','R':'Ρ','S':'Σ','T':'Τ','Y':'Υ',
+                'F':'Φ','C':'Χ','V':'Ω','W':'ς'
+            };
+            if (enToGr[key]) {
+                 handleInput(enToGr[key]);
+            }
+        }
+
+        function handleInput(key) {
+            if (gameOver) return;
+
+            if (key === 'DEL') {
+                // Prevent deleting the first provided letter
+                if (currentGuess.length > 1) {
+                    currentGuess = currentGuess.slice(0, -1);
+                    updateBoard();
+                }
+                return;
+            }
+
+            if (currentGuess.length < wordLength) {
+                currentGuess += key;
+                updateBoard();
+
+                // If word is complete, check automatically
+                if (currentGuess.length === wordLength) {
+                    // Small delay to allow the letter to render visually before checking
+                    setTimeout(() => checkWord(), 100);
+                }
+            }
+        }
+
+        function updateBoard() {
+            const row = document.getElementById(`row-${currentRow}`);
+            if (!row) return;
+
+            const cells = row.querySelectorAll('.cell');
+            
+            // Clear all cells
+            cells.forEach(cell => { cell.textContent = ''; cell.style.borderColor = "var(--border-color)"; });
+            
+            // Fill with current guess
+            for (let i = 0; i < currentGuess.length; i++) {
+                cells[i].textContent = currentGuess[i];
+                cells[i].style.borderColor = "var(--filled-cell)";
+            }
+        }
+
+        function showMessage(msg, isError = false) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = msg;
+            msgEl.style.color = isError ? '#ff4a4a' : '#538d4e';
+        }
+
+        function checkWord() {
+            if (currentGuess.length !== wordLength) return;
+
+            // Dictionary Check (Instant Lose if false)
+            if (!dictionary.includes(currentGuess)) {
+                showMessage(`"${currentGuess}" is not in the dictionary! Game Over.`, true);
+                stats.losses += 1;
+                saveStats();
+                renderStats();
+                gameOver = true;
+                return;
+            }
+
+            // Word exists, apply color feedback
+            applyColors();
+
+            // Check Win Condition
+            if (currentGuess === targetWord) {
+                showMessage("ΣΥΓΧΑΡΗΤΗΡΙΑ! YOU WIN!", false);
+                stats.wins += 1;
+                saveStats();
+                renderStats();
+                gameOver = true;
+                return;
+            }
+
+            // Move to next row
+            currentRow++;
+            if (currentRow >= maxGuesses) {
+                showMessage(`Game Over! The word was ${targetWord}`, true);
+                stats.losses += 1;
+                saveStats();
+                renderStats();
+                gameOver = true;
+            } else {
+                // Pre-fill the first letter for the next attempt
+                currentGuess = targetWord.charAt(0);
+                updateBoard();
+            }
+        }
+
+        function applyColors() {
+            const row = document.getElementById(`row-${currentRow}`);
+            const cells = row.querySelectorAll('.cell');
+            
+            let targetChars = targetWord.split('');
+            let guessChars = currentGuess.split('');
+            let colors = new Array(wordLength).fill('absent');
+
+            // 1st Pass: Find exact matches (Green)
+            for (let i = 0; i < wordLength; i++) {
+                if (guessChars[i] === targetChars[i]) {
+                    colors[i] = 'correct';
+                    targetChars[i] = null; // Remove from target pool to handle duplicates correctly
+                }
+            }
+
+            // 2nd Pass: Find present matches (Yellow)
+            for (let i = 0; i < wordLength; i++) {
+                if (colors[i] === 'correct') continue; // Skip already matched
+
+                const targetIndex = targetChars.indexOf(guessChars[i]);
+                if (targetIndex !== -1) {
+                    colors[i] = 'present';
+                    targetChars[targetIndex] = null;
+                }
+            }
+
+            // Apply colors to cells and keyboard
+            for (let i = 0; i < wordLength; i++) {
+                // Small animation delay for each tile
+                setTimeout(() => {
+                    cells[i].classList.add(colors[i]);
+                    cells[i].style.borderColor = `var(--${colors[i]})`;
+                    cells[i].style.color = "white";
+                    
+                    updateKeyboardColor(guessChars[i], colors[i]);
+                }, i * 150);
+            }
+        }
+
+        function updateKeyboardColor(keyChar, colorStatus) {
+            const keyBtn = document.getElementById(`key-${keyChar}`);
+            if (!keyBtn) return;
+
+            // Priority: Correct > Present > Absent
+            if (keyBtn.classList.contains('correct')) return;
+            
+            if (colorStatus === 'correct') {
+                keyBtn.classList.remove('present', 'absent');
+                keyBtn.classList.add('correct');
+            } else if (colorStatus === 'present' && !keyBtn.classList.contains('correct')) {
+                keyBtn.classList.remove('absent');
+                keyBtn.classList.add('present');
+            } else if (colorStatus === 'absent' && !keyBtn.classList.contains('correct') && !keyBtn.classList.contains('present')) {
+                keyBtn.classList.add('absent');
+            }
+        }
+
+        // Start the game
+        window.onload = initGame;
+    </script>
+</body>
+</html>
