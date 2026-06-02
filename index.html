@@ -158,11 +158,11 @@
             text-shadow: 0 0 14px rgba(255, 255, 255, 0.35), 0 0 34px rgba(255, 122, 0, 0.35);
             flex-shrink: 0;
         }
-        .game-stats {
-            font-size: 12px;
-            font-weight: 800;
-            color: rgba(255,255,255,0.85);
-            text-shadow: 0 0 12px rgba(0,0,0,0.25);
+        .game-timer {
+            font-size: 14px;
+            font-weight: 900;
+            color: #ffd400;
+            text-shadow: 0 0 12px rgba(255, 212, 0, 0.4);
             background: rgba(255,255,255,0.14);
             border: 1px solid rgba(255,255,255,0.22);
             border-radius: 10px;
@@ -171,11 +171,25 @@
             flex-shrink: 0;
         }
 
+        .game-subtitle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 1px 0 2px 0;
+            flex-shrink: 0;
+        }
         .game-subtitle {
             font-size: 13px;
             color: var(--muted);
-            text-align: center;
-            margin: 1px 0 2px 0;
+            text-align: left;
+            flex-shrink: 0;
+        }
+        .game-stats {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.6);
+            text-align: right;
             flex-shrink: 0;
         }
 
@@ -385,9 +399,12 @@
         <div class="game-header">
             <button class="back-icon" onclick="backToMenu()">←</button>
             <span class="game-title">LINGO</span>
+            <span class="game-timer" id="timer-display">⏱ 15s</span>
+        </div>
+        <div class="game-subtitle-row">
+            <span class="game-subtitle" id="game-subtitle">Βρες την λέξη με τα 4 γράμματα!</span>
             <span class="game-stats" id="stats">Νίκες: 0 | Ήττες: 0</span>
         </div>
-        <div class="game-subtitle" id="game-subtitle">Βρες την λέξη με τα 4 γράμματα!</div>
         <div id="game-board"></div>
         <div id="gameover-panel">
             <div class="answer-text">Η λέξη ήταν</div>
@@ -453,8 +470,8 @@
         }
 
         function updateTimerUI() {
-            const el = document.getElementById('stats');
-            if (el) el.textContent = `Νίκες: ${stats.wins} | Ήττες: ${stats.losses} | ⏱ ${timerSeconds}s`;
+            const el = document.getElementById('timer-display');
+            if (el) el.textContent = `⏱ ${timerSeconds}s`;
         }
 
         function loadStats() {
@@ -474,7 +491,7 @@
 
         function updateStatsUI() {
             const el = document.getElementById('stats');
-            if (el) el.textContent = `Νίκες: ${stats.wins} | Ήττες: ${stats.losses} | ⏱ ${timerSeconds}s`;
+            if (el) el.textContent = `Νίκες: ${stats.wins} | Ήττες: ${stats.losses}`;
         }
 
         async function loadWordData() {
