@@ -218,38 +218,69 @@
             flex-shrink: 0;
         }
 
-        #answer-display {
-            min-height: 30px;
-            font-weight: 900;
-            font-size: 22px;
-            color: #ff4a4a;
-            text-shadow: 0 0 14px rgba(0, 0, 0, 0.35);
-            text-align: center;
-            letter-spacing: 6px;
-            flex-shrink: 0;
+        /* ===== Game Over Panel ===== */
+        #gameover-panel {
             display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 18px;
+            padding: 28px 36px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+            width: 100%;
+            max-width: 320px;
+            margin: 8px auto;
+        }
+
+        #gameover-panel .answer-text {
+            font-weight: 900;
+            font-size: 20px;
+            color: #ffffff;
+            text-align: center;
+            letter-spacing: 2px;
+            text-shadow: 0 0 14px rgba(0, 0, 0, 0.35);
+        }
+
+        #gameover-panel .answer-word {
+            font-weight: 900;
+            font-size: 32px;
+            color: #ffd400;
+            text-align: center;
+            letter-spacing: 8px;
+            text-shadow: 0 0 20px rgba(255, 212, 0, 0.4);
         }
 
         #next-btn {
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
+            background: linear-gradient(180deg, #ff7a00, #e06600);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.22);
+            border: none;
             border-radius: 14px;
-            height: 44px;
-            padding: 0 20px;
-            font-size: 16px;
+            height: 66px;
+            padding: 0 40px;
+            font-size: 24px;
             font-weight: 900;
             cursor: pointer;
             text-transform: uppercase;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 24px rgba(0, 0, 0, 0.18);
-            transition: transform 0.06s, background-color 0.15s;
+            box-shadow: 0 8px 24px rgba(255, 122, 0, 0.4);
             display: none;
             flex-shrink: 0;
             align-items: center;
             justify-content: center;
+            animation: breathe 2.5s ease-in-out infinite;
         }
-        #next-btn:hover { background: linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.20)); }
-        #next-btn:active { transform: scale(0.97); }
+        #next-btn:hover { background: linear-gradient(180deg, #ff8c1a, #e06600); }
+        #next-btn:active { transform: scale(0.95); }
+
+        @keyframes breathe {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+            100% { transform: scale(1); }
+        }
 
         #keyboard {
             display: flex;
@@ -367,9 +398,10 @@
         </div>
         <div class="game-subtitle" id="game-subtitle">Βρες την λέξη με τα 4 γράμματα!</div>
         <div id="message"></div>
-        <div id="answer-display"></div>
         <div id="game-board"></div>
-        <div id="next-btn-container" style="display:flex; justify-content:center; flex-shrink:0; width:100%;">
+        <div id="gameover-panel">
+            <div class="answer-text">Η λέξη ήταν</div>
+            <div class="answer-word" id="answer-word"></div>
             <button id="next-btn">ΕΠΟΜΕΝΟ</button>
         </div>
         <div id="keyboard"></div>
@@ -394,8 +426,7 @@
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('main-menu').classList.add('active');
             document.removeEventListener('keydown', handlePhysicalKeyboard);
-            hideAnswerDisplay();
-            hideNextButton();
+            hideGameOverPanel();
         }
 
         // ---- Game Data ----
@@ -493,24 +524,18 @@
             });
         }
 
-        function showAnswerDisplay(word) {
-            const el = document.getElementById('answer-display');
-            el.textContent = word;
-            el.style.display = 'block';
-        }
-
-        function hideAnswerDisplay() {
-            const el = document.getElementById('answer-display');
-            el.textContent = '';
-            el.style.display = 'none';
-        }
-
-        function showNextButton() {
+        function showGameOverPanel(word) {
+            const panel = document.getElementById('gameover-panel');
+            const wordEl = document.getElementById('answer-word');
+            wordEl.textContent = word;
+            panel.style.display = 'flex';
             const btn = document.getElementById('next-btn');
             btn.style.display = 'inline-flex';
         }
 
-        function hideNextButton() {
+        function hideGameOverPanel() {
+            const panel = document.getElementById('gameover-panel');
+            panel.style.display = 'none';
             const btn = document.getElementById('next-btn');
             btn.style.display = 'none';
         }
@@ -538,8 +563,7 @@
             document.getElementById('keyboard').innerHTML = '';
             document.getElementById('message').textContent = '';
 
-            hideAnswerDisplay();
-            hideNextButton();
+            hideGameOverPanel();
 
             createBoard();
             createKeyboard();
@@ -577,8 +601,7 @@
             document.getElementById('keyboard').innerHTML = '';
             document.getElementById('message').textContent = '';
 
-            hideAnswerDisplay();
-            hideNextButton();
+            hideGameOverPanel();
 
             document.getElementById('game-subtitle').textContent = `Βρες την λέξη με τα ${len} γράμματα!`;
 
@@ -706,8 +729,7 @@
         function handleLoss(reason) {
             gameOver = true;
             showMessage(reason, true);
-            showAnswerDisplay(targetWord);
-            showNextButton();
+            showGameOverPanel(targetWord);
             stats.losses += 1;
             saveStats();
             updateStatsUI();
@@ -734,7 +756,7 @@
             if (currentGuess === targetWord) {
                 showMessage("ΣΥΓΧΑΡΗΤΗΡΙΑ! ΝΙΚΗΣΕΣ!", false);
                 stats.wins += 1; saveStats(); updateStatsUI(); gameOver = true;
-                showNextButton();
+                showGameOverPanel(targetWord);
                 return;
             }
             currentRow++;
