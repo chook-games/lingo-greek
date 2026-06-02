@@ -208,17 +208,7 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 14px rgba(0, 0, 0, 0.18);
         }
 
-        #message {
-            min-height: 22px;
-            font-weight: 800;
-            font-size: 15px;
-            color: #ffffff;
-            text-shadow: 0 0 14px rgba(0, 0, 0, 0.35);
-            text-align: center;
-            flex-shrink: 0;
-        }
-
-        /* ===== Game Over Panel ===== */
+        /* ===== Game Over Panel (centered overlay) ===== */
         #gameover-panel {
             display: none;
             flex-direction: column;
@@ -231,10 +221,13 @@
             padding: 28px 36px;
             box-shadow: var(--shadow);
             backdrop-filter: blur(10px);
-            flex-shrink: 0;
-            width: 100%;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100% - 32px);
             max-width: 320px;
-            margin: 8px auto;
+            z-index: 100;
         }
 
         #gameover-panel .answer-text {
@@ -344,7 +337,6 @@
             .game-title { font-size: 22px; }
             .game-stats { font-size: 10px; padding: 3px 8px; }
             .game-subtitle { font-size: 11px; }
-            #message { font-size: 13px; min-height: 18px; }
             #keyboard { gap: 4px; padding: 6px; }
             .key-row { gap: 4px; }
             button.key { height: 36px; font-size: 12px; }
@@ -355,7 +347,6 @@
             .game-title { font-size: 18px; letter-spacing: 2px; }
             .game-stats { font-size: 9px; padding: 2px 6px; }
             .game-subtitle { font-size: 10px; }
-            #message { font-size: 11px; min-height: 14px; }
             #keyboard { gap: 3px; padding: 4px; }
             .key-row { gap: 3px; }
             button.key { height: 30px; font-size: 10px; min-width: 22px; }
@@ -397,7 +388,6 @@
             <span class="game-stats" id="stats">Νίκες: 0 | Ήττες: 0</span>
         </div>
         <div class="game-subtitle" id="game-subtitle">Βρες την λέξη με τα 4 γράμματα!</div>
-        <div id="message"></div>
         <div id="game-board"></div>
         <div id="gameover-panel">
             <div class="answer-text">Η λέξη ήταν</div>
@@ -416,16 +406,14 @@
         }
 
         function showComingSoon() {
-            const msg = document.getElementById('message');
-            msg.textContent = 'COMING SOON!';
-            msg.style.color = '#ffd400';
-            setTimeout(() => { msg.textContent = ''; }, 1500);
+            // no message needed anymore
         }
 
         function backToMenu() {
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('main-menu').classList.add('active');
             document.removeEventListener('keydown', handlePhysicalKeyboard);
+            clearTimer();
             hideGameOverPanel();
         }
 
@@ -437,6 +425,37 @@
 
         const STATS_KEY = 'greekLingoStats_v1';
         let stats = { wins: 0, losses: 0 };
+
+        // ---- Timer ----
+        const TIMER_SECONDS = 15;
+        let timerInterval = null;
+        let timerSeconds = TIMER_SECONDS;
+
+        function startTimer() {
+            clearTimer();
+            timerSeconds = TIMER_SECONDS;
+            updateTimerUI();
+            timerInterval = setInterval(() => {
+                timerSeconds--;
+                updateTimerUI();
+                if (timerSeconds <= 0) {
+                    clearTimer();
+                    handleLoss("Τέλος χρόνου! Έχασες!");
+                }
+            }, 1000);
+        }
+
+        function clearTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function updateTimerUI() {
+            const el = document.getElementById('stats');
+            if (el) el.textContent = `Νίκες: ${stats.wins} | Ήττες: ${stats.losses} | ⏱ ${timerSeconds}s`;
+        }
 
         function loadStats() {
             try {
@@ -455,7 +474,7 @@
 
         function updateStatsUI() {
             const el = document.getElementById('stats');
-            if (el) el.textContent = `Νίκες: ${stats.wins} | Ήττες: ${stats.losses}`;
+            if (el) el.textContent = `Νίκες: ${stats.wins} | Ήττες: ${stats.losses} | ⏱ ${timerSeconds}s`;
         }
 
         async function loadWordData() {
@@ -489,17 +508,16 @@
             const screen = document.getElementById('game-screen');
             const header = screen.querySelector('.game-header');
             const subtitle = screen.querySelector('.game-subtitle');
-            const msg = document.getElementById('message');
             const kb = document.getElementById('keyboard');
 
             const availHeight = screen.clientHeight;
             const headerH = header.offsetHeight;
             const subH = subtitle.offsetHeight;
-            const msgH = msg.offsetHeight;
+            const msgH = 0;
             const kbH = kb.offsetHeight;
 
-            // Gaps: header->subtitle, subtitle->msg, msg->board, board->keyboard
-            const gaps = 4 + 2 + 4 + 6; // approximate total gaps in px
+            // Gaps: header->subtitle, subtitle->board, board->keyboard
+            const gaps = 4 + 2 + 6; // approximate total gaps in px
             const boardGap = 5; // gap between rows
             const cellGap = 5; // gap between cells in a row
 
@@ -561,7 +579,6 @@
             // Clear the board
             document.getElementById('game-board').innerHTML = '';
             document.getElementById('keyboard').innerHTML = '';
-            document.getElementById('message').textContent = '';
 
             hideGameOverPanel();
 
@@ -574,6 +591,8 @@
 
             currentGuess = targetWord.charAt(0);
             updateBoard();
+
+            startTimer();
 
             document.addEventListener('keydown', handlePhysicalKeyboard);
         }
@@ -599,7 +618,6 @@
 
             document.getElementById('game-board').innerHTML = '';
             document.getElementById('keyboard').innerHTML = '';
-            document.getElementById('message').textContent = '';
 
             hideGameOverPanel();
 
@@ -611,7 +629,7 @@
             try {
                 await loadWordData();
             } catch (e) {
-                showMessage(`Σφάλμα: ${e.message}`, true);
+                alert(`Σφάλμα: ${e.message}`);
                 gameOver = true;
                 return;
             }
@@ -629,6 +647,8 @@
 
             currentGuess = targetWord.charAt(0);
             updateBoard();
+
+            startTimer();
 
             document.addEventListener('keydown', handlePhysicalKeyboard);
         }
@@ -720,15 +740,9 @@
             }
         }
 
-        function showMessage(msg, isError = false) {
-            const msgEl = document.getElementById('message');
-            msgEl.textContent = msg;
-            msgEl.style.color = isError ? '#ff4a4a' : '#26d07c';
-        }
-
         function handleLoss(reason) {
             gameOver = true;
-            showMessage(reason, true);
+            clearTimer();
             showGameOverPanel(targetWord);
             stats.losses += 1;
             saveStats();
@@ -754,9 +768,15 @@
 
             applyColors();
             if (currentGuess === targetWord) {
-                showMessage("ΣΥΓΧΑΡΗΤΗΡΙΑ! ΝΙΚΗΣΕΣ!", false);
-                stats.wins += 1; saveStats(); updateStatsUI(); gameOver = true;
-                showGameOverPanel(targetWord);
+                clearTimer();
+                gameOver = true;
+                stats.wins += 1;
+                saveStats();
+                updateStatsUI();
+                // Show green tiles first, then panel after 2 seconds
+                setTimeout(() => {
+                    showGameOverPanel(targetWord);
+                }, 2000);
                 return;
             }
             currentRow++;
@@ -765,6 +785,7 @@
             } else {
                 currentGuess = targetWord.charAt(0);
                 updateBoard();
+                startTimer();
             }
         }
 
