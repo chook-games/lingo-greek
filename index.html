@@ -218,6 +218,39 @@
             flex-shrink: 0;
         }
 
+        #answer-display {
+            min-height: 30px;
+            font-weight: 900;
+            font-size: 22px;
+            color: #ff4a4a;
+            text-shadow: 0 0 14px rgba(0, 0, 0, 0.35);
+            text-align: center;
+            letter-spacing: 6px;
+            flex-shrink: 0;
+            display: none;
+        }
+
+        #next-btn {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            border-radius: 14px;
+            height: 44px;
+            padding: 0 20px;
+            font-size: 16px;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 24px rgba(0, 0, 0, 0.18);
+            transition: transform 0.06s, background-color 0.15s;
+            display: none;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+        }
+        #next-btn:hover { background: linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.20)); }
+        #next-btn:active { transform: scale(0.97); }
+
         #keyboard {
             display: flex;
             flex-direction: column;
@@ -334,7 +367,11 @@
         </div>
         <div class="game-subtitle" id="game-subtitle">Βρες την λέξη με τα 4 γράμματα!</div>
         <div id="message"></div>
+        <div id="answer-display"></div>
         <div id="game-board"></div>
+        <div id="next-btn-container" style="display:flex; justify-content:center; flex-shrink:0; width:100%;">
+            <button id="next-btn">ΕΠΟΜΕΝΟ</button>
+        </div>
         <div id="keyboard"></div>
     </div>
 
@@ -357,6 +394,8 @@
             document.getElementById('game-screen').classList.remove('active');
             document.getElementById('main-menu').classList.add('active');
             document.removeEventListener('keydown', handlePhysicalKeyboard);
+            hideAnswerDisplay();
+            hideNextButton();
         }
 
         // ---- Game Data ----
@@ -409,6 +448,11 @@
         let currentRow = 0;
         let currentGuess = "";
         let gameOver = false;
+        let guessedWords = []; // track guessed words to detect duplicates
+        let currentWordIndex = 0; // track which word we're on in the session
+        let sessionWords = []; // words used in this session
+        let sessionLosses = 0; // losses in current session
+        let sessionWins = 0; // wins in current session
 
         function computeCellSize() {
             const screen = document.getElementById('game-screen');
@@ -449,12 +493,82 @@
             });
         }
 
+        function showAnswerDisplay(word) {
+            const el = document.getElementById('answer-display');
+            el.textContent = word;
+            el.style.display = 'block';
+        }
+
+        function hideAnswerDisplay() {
+            const el = document.getElementById('answer-display');
+            el.textContent = '';
+            el.style.display = 'none';
+        }
+
+        function showNextButton() {
+            const btn = document.getElementById('next-btn');
+            btn.style.display = 'inline-flex';
+        }
+
+        function hideNextButton() {
+            const btn = document.getElementById('next-btn');
+            btn.style.display = 'none';
+        }
+
+        function nextWord() {
+            // Pick a new random word that hasn't been used in this session
+            let available = targetWords.filter(w => !sessionWords.includes(w));
+            if (available.length === 0) {
+                // All words used, reset session
+                sessionWords = [];
+                available = targetWords;
+            }
+            const newWord = available[Math.floor(Math.random() * available.length)];
+            sessionWords.push(newWord);
+
+            // Reset game state
+            targetWord = newWord;
+            currentRow = 0;
+            currentGuess = "";
+            gameOver = false;
+            guessedWords = [];
+
+            // Clear the board
+            document.getElementById('game-board').innerHTML = '';
+            document.getElementById('keyboard').innerHTML = '';
+            document.getElementById('message').textContent = '';
+
+            hideAnswerDisplay();
+            hideNextButton();
+
+            createBoard();
+            createKeyboard();
+
+            requestAnimationFrame(() => {
+                applyCellSizes();
+            });
+
+            currentGuess = targetWord.charAt(0);
+            updateBoard();
+
+            document.addEventListener('keydown', handlePhysicalKeyboard);
+        }
+
+        // Wire up the next button
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('next-btn').addEventListener('click', nextWord);
+        });
+
         async function startGame(len) {
             wordLength = len;
             targetWord = "";
             currentRow = 0;
             currentGuess = "";
             gameOver = false;
+            guessedWords = [];
+            sessionWords = [];
+            sessionLosses = 0;
+            sessionWins = 0;
 
             loadStats();
             updateStatsUI();
@@ -462,6 +576,9 @@
             document.getElementById('game-board').innerHTML = '';
             document.getElementById('keyboard').innerHTML = '';
             document.getElementById('message').textContent = '';
+
+            hideAnswerDisplay();
+            hideNextButton();
 
             document.getElementById('game-subtitle').textContent = `Βρες την λέξη με τα ${len} γράμματα!`;
 
@@ -477,6 +594,7 @@
             }
 
             targetWord = targetWords[Math.floor(Math.random() * targetWords.length)];
+            sessionWords.push(targetWord);
 
             createBoard();
             createKeyboard();
@@ -585,23 +703,43 @@
             msgEl.style.color = isError ? '#ff4a4a' : '#26d07c';
         }
 
+        function handleLoss(reason) {
+            gameOver = true;
+            showMessage(reason, true);
+            showAnswerDisplay(targetWord);
+            showNextButton();
+            stats.losses += 1;
+            saveStats();
+            updateStatsUI();
+        }
+
         function checkWord() {
             if (currentGuess.length !== wordLength) return;
-            if (!dictionary.includes(currentGuess)) {
-                showMessage(`"${currentGuess}" δεν υπάρχει στο λεξικό! Game Over.`, true);
-                stats.losses += 1; saveStats(); updateStatsUI(); gameOver = true;
+
+            // Check if word was already guessed before
+            if (guessedWords.includes(currentGuess)) {
+                handleLoss(`"${currentGuess}" την ξαναδοκίμασες! Έχασες!`);
                 return;
             }
+
+            if (!dictionary.includes(currentGuess)) {
+                handleLoss(`"${currentGuess}" δεν υπάρχει στο λεξικό! Έχασες!`);
+                return;
+            }
+
+            // Track this guess
+            guessedWords.push(currentGuess);
+
             applyColors();
             if (currentGuess === targetWord) {
                 showMessage("ΣΥΓΧΑΡΗΤΗΡΙΑ! ΝΙΚΗΣΕΣ!", false);
                 stats.wins += 1; saveStats(); updateStatsUI(); gameOver = true;
+                showNextButton();
                 return;
             }
             currentRow++;
             if (currentRow >= maxGuesses) {
-                showMessage(`Game Over! Η λέξη ήταν ${targetWord}`, true);
-                stats.losses += 1; saveStats(); updateStatsUI(); gameOver = true;
+                handleLoss(`Game Over! Η λέξη ήταν ${targetWord}`);
             } else {
                 currentGuess = targetWord.charAt(0);
                 updateBoard();
